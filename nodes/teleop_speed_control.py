@@ -17,12 +17,13 @@ class Teleop:
         self.joy = None
         self.msg = Axis() # instantiate Axis message
         self.msg.autofocus = True # autofocus is on by default
-        # sensitivities[0..5] corresponding to fwd, left, up, tilt right, 
-        # tilt forwards, anticlockwise twist
+        self.allowManualFocus = False # disable or enable manual focus
         self.mirror = False
         self.mirror_already_actioned = False # to stop mirror flip-flopping
-        self.sensitivities = [120, -60, 40, 0, 0, 30]
-        self.deadband = [0.2, 0.2, 0.2, 0.2, 0.4, 0.4]
+        # sensitivities[0..5] corresponding to fwd, left, up, tilt right, 
+        # tilt forwards, anticlockwise twist
+        self.sensitivities = [120, -60, 40, 60, -40, 30]
+        self.deadband = [0.2, 0.2, 0.2, 0.2, 0.2, 0.4]
        
     def spin(self):
         self.pub.publish(self.msg)
@@ -37,9 +38,16 @@ class Teleop:
         '''Creates and publishes message to command the camera.  Spacenav axes
         are: [fwd, left, up, tilt_right, tilt_forward, twist_anticlockwise'''
         self.applyThresholds()
-        self.msg.pan = self.axes_thresholded[1] * self.sensitivities[1]
-        self.msg.tilt = self.axes_thresholded[2] * self.sensitivities[2]
+        self.msg.pan = self.axes_thresholded[3] * self.sensitivities[3]
+        self.msg.tilt = self.axes_thresholded[4] * self.sensitivities[4]
         self.msg.zoom = self.axes_thresholded[0] * self.sensitivities[0]
+        if self.allowManualFocus:
+            self.checkForManualFocus()
+        self.pub.publish(self.msg)
+
+    def checkForManualFocus(self):
+        '''Joystick button 0 sets autofocus to true, twisting the joystick sets
+        autofocus to false and changes the focus.'''
         if self.joy.buttons[0]==1:
             self.msg.autofocus = True
         else:
@@ -47,7 +55,6 @@ class Teleop:
             if (abs(self.msg.focus)>0.00001):
                 # Only turn autofocus off if msg.focus!=0
                 self.msg.autofocus = False
-        self.pub.publish(self.msg)
 
     def applyThresholds(self):
         '''apply deadband to joystick output'''
