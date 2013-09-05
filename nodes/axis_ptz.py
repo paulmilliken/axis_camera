@@ -98,12 +98,14 @@ class AxisPTZ:
         # position control:
         self.speedControl = speed_control
         self.mirror = False
-
+        self.backlight = False
         self.st = None
         self.pub = rospy.Publisher("state", Axis, self)
         self.sub = rospy.Subscriber("cmd", Axis, self.cmd, queue_size=1)
         self.sub_mirror = rospy.Subscriber("mirror", Bool, self.mirrorCallback,
                                                                 queue_size=1)
+        self.sub_backlight = rospy.Subscriber("backlight", Bool, 
+                                        self.backlightCallback, queue_size=1)
 
     def peer_subscribe(self, topic_name, topic_publish, peer_publish):
         '''Lazy-start the state publisher.'''
@@ -212,6 +214,11 @@ class AxisPTZ:
     def createCmdString(self):
         '''creates http cgi string to command PTZ camera'''
         self.cmdString = '/axis-cgi/com/ptz.cgi?'
+        self.cmdString += 'autoiris=on&'
+        if self.backlight:
+            self.cmdString += 'backlight=on&'
+        else:
+            self.cmdString += 'backlight=off&'
         if self.speedControl:
             self.cmdString += 'continuouspantiltmove=%d,%d&' % \
                                     (int(self.msg.pan), int(self.msg.tilt)) \
@@ -224,7 +231,6 @@ class AxisPTZ:
             else:
                 self.cmdString += 'autofocus=off&continuousfocusmove=%d&' % \
                                                         (int(self.msg.focus))
-            self.cmdString += 'autoiris=on'
         else: # position control:
             self.cmdString += 'pan=%d&tilt=%d&' % (self.msg.pan, self.msg.tilt)\
                         + 'zoom=%d&' % (int(self.msg.zoom)) \
@@ -234,12 +240,15 @@ class AxisPTZ:
             else:
                 self.cmdString += 'autofocus=off&focus=%d&' % \
                                                         (int(self.msg.focus))
-            self.cmdString += 'autoiris=on'
 
     def mirrorCallback(self, msg):
         '''Command the camera with speed control or position control commands'''
         self.mirror = msg.data
         
+    def backlightCallback(self, msg):
+        '''Command the camera with speed control or position control commands'''
+        self.backlight = msg.data
+    
     def callback(self, config, level):
         #self.speedControl = config.speed_control
         

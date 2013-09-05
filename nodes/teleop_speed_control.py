@@ -12,7 +12,8 @@ class Teleop:
         self.pub = rospy.Publisher('cmd', Axis)
         rospy.Subscriber("joy", Joy, self.joy_callback, queue_size=1)
         self.pub_mirror = rospy.Publisher('mirror', Bool)
-        
+        self.pub_backlight = rospy.Publisher('backlight', Bool)
+
     def initialiseVariables(self):
         self.joy = None
         self.msg = Axis() # instantiate Axis message
@@ -20,6 +21,8 @@ class Teleop:
         self.allowManualFocus = False # disable or enable manual focus
         self.mirror = False
         self.mirror_already_actioned = False # to stop mirror flip-flopping
+        self.backlight = False
+        self.backlight_already_actioned = False
         # sensitivities[0..5] corresponding to fwd, left, up, tilt right, 
         # tilt forwards, anticlockwise twist
         self.sensitivities = [120, -60, 40, 60, -40, 30]
@@ -32,6 +35,7 @@ class Teleop:
             if self.joy != None:
                 self.createCmdMessage()
                 self.createMirrorMessage()
+                self.createBacklightMessage()
             r.sleep()
 
     def createCmdMessage(self):
@@ -76,7 +80,16 @@ class Teleop:
         else:
             self.mirror_already_actioned = False
         self.pub_mirror.publish(Bool(self.mirror))
-    
+
+    def createBacklightMessage(self):
+        if self.joy.buttons[0]==1:
+            if not self.backlight_already_actioned:
+                self.backlight = not self.backlight
+                self.backlight_already_actioned = True
+        else:
+            self.backlight_already_actioned = False
+        self.pub_backlight.publish(Bool(self.backlight))
+
 if __name__ == "__main__":
     teleop = Teleop()
     teleop.spin()
