@@ -49,10 +49,12 @@ class StateThread(threading.Thread):
             # Response code 401 means authentication error
             elif response.status == 401:
                 rospy.logwarn('You need to enable anonymous PTZ control login' 
-                              'at http://%s -> Setup Basic Setup -> Users' % self.hostname)
+                            'at http://%s -> Setup Basic Setup -> Users' %
+                            self.hostname)
             else:
                 self.cameraPosition = None
-                rospy.logwarn('Received HTTP response %i from camera, expecting 200' % response.status)
+                rospy.logwarn('Received HTTP response %i from camera, expecting'
+                                                ' 200' % response.status)
         except:
             rospy.logwarn('Encountered a problem getting a response from %s.  '
                             'Possibly a problem with the network connection.' %
@@ -249,7 +251,7 @@ class AxisPTZ:
         '''Command the camera with speed control or position control commands'''
         self.backlight = msg.data
     
-    def callback(self, config, level):
+    def dynamicReconfigCallback(self, config, level):
         #self.speedControl = config.speed_control
         
         # create temporary message and fill with data from dynamic reconfigure
@@ -298,7 +300,7 @@ def main():
 
     # create new PTZ object and start dynamic_reconfigure server
     my_ptz = AxisPTZ(**args)
-    srv = Server(PTZConfig, my_ptz.callback)
+    srv = Server(PTZConfig, my_ptz.dynamicReconfigCallback)
     rospy.spin()
 
 if __name__ == "__main__":
