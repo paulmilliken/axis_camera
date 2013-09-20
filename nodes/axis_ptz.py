@@ -55,10 +55,15 @@ class StateThread(threading.Thread):
                 self.cameraPosition = None
                 rospy.logwarn('Received HTTP response %i from camera, expecting'
                                                 ' 200' % response.status)
+            self.cameraPositionErrorFlag = False
         except:
-            rospy.logwarn('Encountered a problem getting a response from %s.  '
-                            'Possibly a problem with the network connection.' %
-                            self.axis.hostname)
+            # Only warn if self.cameraPositionErrorFlag==False, otherwise
+            # log file gets swamped with repeat messages.
+            if self.cameraPositionErrorFlag==False:
+                rospy.logwarn('Encountered a problem getting a response from '
+                        '%s.  Possibly a problem with the network connection.' %
+                        self.axis.hostname)
+                self.cameraPositionErrorFlag = True
             self.cameraPosition = None
    
     def publishCameraState(self):
@@ -209,8 +214,12 @@ class AxisPTZ:
         self.createCmdString()
         try:
             conn.request('GET', self.cmdString)
+            self.sendCmdMsgErrorFlag = False
         except:
-            rospy.logwarn('Failed to connect to camera to send command message')
+            if self.sendCmdMsgErrorFlag==False:
+                rospy.logwarn('Failed to connect to camera to send command '
+                                                                    'message')
+            self.sendCmdMsgErrorFlag = True
             conn.close()
 
     def createCmdString(self):
