@@ -18,6 +18,7 @@ class StreamThread(threading.Thread):
         self.axis = axis
         self.daemon = True
         self.timeoutSeconds = 2.5
+        self.timeoutWarnFlag = False
 
     def run(self):
         while(True):
@@ -60,10 +61,13 @@ class StreamThread(threading.Thread):
         '''Open connection to Axis camera using http'''
         try:
             self.fp = urllib2.urlopen(self.url, timeout=self.timeoutSeconds)
+            self.timeoutWarnFlag = False
             return(True)
         except urllib2.URLError, e:
-            rospy.logwarn('Error opening URL %s' % (self.url) +
+            if self.timeoutWarnFlag==False:
+                rospy.logwarn('Error opening URL %s' % (self.url) +
                             'Possible timeout.  Looping until camera appears')
+                self.timeoutWarnFlag = True
             return(False)
 
     def publishFramesContinuously(self):

@@ -55,15 +55,10 @@ class StateThread(threading.Thread):
                 self.cameraPosition = None
                 rospy.logwarn('Received HTTP response %i from camera, expecting'
                                                 ' 200' % response.status)
-            self.cameraPositionErrorFlag = False
         except:
-            # Only warn if self.cameraPositionErrorFlag==False, otherwise
-            # log file gets swamped with repeat messages.
-            if self.cameraPositionErrorFlag==False:
-                rospy.logwarn('Encountered a problem getting a response from '
+            rospy.logwarn('Encountered a problem getting a response from '
                         '%s.  Possibly a problem with the network connection.' %
                         self.axis.hostname)
-                self.cameraPositionErrorFlag = True
             self.cameraPosition = None
    
     def publishCameraState(self):
@@ -108,11 +103,12 @@ class AxisPTZ:
         self.backlight = False
         self.st = None
         self.pub = rospy.Publisher("state", Axis, self)
-        self.sub = rospy.Subscriber("cmd", Axis, self.cmd, queue_size=1)
+        self.sub = rospy.Subscriber("cmd", Axis, self.cmdCallback, queue_size=1)
         self.sub_mirror = rospy.Subscriber("mirror", Bool, self.mirrorCallback,
                                                                 queue_size=1)
         self.sub_backlight = rospy.Subscriber("backlight", Bool, 
                                         self.backlightCallback, queue_size=1)
+        self.failedToSendCmdMsgFlag = False
 
     def peer_subscribe(self, topic_name, topic_publish, peer_publish):
         '''Lazy-start the state publisher.'''
@@ -120,7 +116,7 @@ class AxisPTZ:
             self.st = StateThread(self)
             self.st.start()
 
-    def cmd(self, msg):
+    def cmdCallback(self, msg):
         '''Command the camera with speed control or position control commands'''
         self.msg = msg
         if self.flip:
@@ -214,12 +210,12 @@ class AxisPTZ:
         self.createCmdString()
         try:
             conn.request('GET', self.cmdString)
-            self.sendCmdMsgErrorFlag = False
+            self.failedToSendCmdMsgFlag = False
         except:
-            if self.sendCmdMsgErrorFlag==False:
+            if self.failedToSendCmdMsgFlag==False:
                 rospy.logwarn('Failed to connect to camera to send command '
                                                                     'message')
-            self.sendCmdMsgErrorFlag = True
+                self.failedToSendCmdMsgFlag = True 
             conn.close()
 
     def createCmdString(self):
@@ -273,7 +269,7 @@ class AxisPTZ:
         temp_msg.autofocus = config.autofocus
         
         # check sanity and apply values
-        self.cmd(temp_msg)
+        self.cmdCallback(temp_msg)
         
         # read sanitized values and update GUI
         config.pan = self.msg.pan
