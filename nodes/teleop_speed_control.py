@@ -4,6 +4,7 @@ import rospy
 from sensor_msgs.msg import Joy
 from axis_camera.msg import Axis
 from std_msgs.msg import Bool
+from std_msgs.msg import Char 
 
 class Teleop:
     def __init__(self):
@@ -13,6 +14,9 @@ class Teleop:
         rospy.Subscriber("joy", Joy, self.joy_callback, queue_size=1)
         self.pub_mirror = rospy.Publisher('mirror', Bool)
         self.pub_backlight = rospy.Publisher('backlight', Bool)
+        self.pub_ptz_favorite = rospy.Publisher('ptz_favorite', Char)
+        self.pub_ptz_favorite_save_go = rospy.Publisher('ptz_favorite_save_go',
+                                                                           Char)
 
     def initialiseVariables(self):
         self.joy = None
@@ -27,6 +31,9 @@ class Teleop:
         # tilt forwards, anticlockwise twist
         self.sensitivities = [120, -60, 40, 60, -40, 30]
         self.deadband = [0.2, 0.2, 0.2, 0.2, 0.2, 0.4]
+        self.ptz_favorite = 0
+        self.ptz_favorite_already_actioned = False
+        self.ptz_favorite_save_go = 0 # 0=joystick_control, 1 = save, 2 = go
        
     def spin(self):
         self.pub.publish(self.msg)
@@ -36,6 +43,8 @@ class Teleop:
                 self.createCmdMessage()
                 self.createMirrorMessage()
                 self.createBacklightMessage()
+                self.createPtzFavoriteMessage()
+                self.createPtzFavoriteSaveGoMessage()
             r.sleep()
 
     def createCmdMessage(self):
@@ -89,6 +98,26 @@ class Teleop:
         else:
             self.backlight_already_actioned = False
         self.pub_backlight.publish(Bool(self.backlight))
+
+    def createPtzFavoriteMessage(self):
+        '''publish a message to change between joystick control and favorite
+        positions pos 1, pos 2 and pos 3'''
+        if abs(self.joy.axes[5]) > 0.6:
+            if not self.ptz_favorite_already_actioned:
+                self.ptz_favorite = (self.ptz_favorite + \
+                                           numpy.sign(self.joy.axes[5])) % 4
+                self.ptz_favorite_already_actioned = True
+        else:
+            self.ptz_favorite_already_actioned = False
+        self.pub_ptz_favorite.publish(Char(self.ptz_favorite))
+
+    def createPtzFavoriteSaveGoMessage(self):
+        '''publish a message to save or goto favorite position'''
+        if abs(self.joy.axes[2]) > 0.6:
+            self.ptz_favorite_save_go = numpy.sign(self.joy.axes[2])
+        else:
+            self.ptz_favorite_save_go = 0
+        self.pub_ptz_favorite_save_go.publish(Char(self.ptz_favorite_save_go))
 
 if __name__ == "__main__":
     teleop = Teleop()
