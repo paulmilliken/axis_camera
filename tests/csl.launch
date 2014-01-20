@@ -1,0 +1,23 @@
+<launch>
+  <group ns="axis" >
+    <param name="hostname" value="192.168.1.90" />
+    <param name="width" value="704" />
+    <param name="height" value="480" />
+    <param name="flip" value="false" />
+    <param name="speed_control" value="true" />
+    <node pkg="axis_camera" type="axis_ptz.py" name="axis_ptz" />
+    <node pkg="axis_camera" type="teleop_speed_control.py" name="teleop" />
+    <node pkg="spacenav_node" type="spacenav_node" name="joystick" >
+      <remap from="/axis/spacenav/joy" to="/axis/joy" />
+    </node >
+    <node pkg="gscam" type="gscam" name="axis" >
+      <remap from="/axis/camera/image_raw" to="/axis/image_raw" />
+      <param name="gscam_config" value="gnomevfssrc location=http://192.168.1.90/mjpg/video.mjpg?fps=18 ! jpegdec ! ffmpegcolorspace " />
+    </node >
+    <node pkg="teleop_view" type="teleop_view" name="teleop_view" >
+      <remap from="image" to="image_raw" />
+      <param name="image_transport" value="compressed" />
+    </node >
+  </group >
+</launch>
+
